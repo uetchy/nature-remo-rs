@@ -45,7 +45,7 @@ impl Client {
     self.make_request::<T>(path, Some(body))
   }
 
-  fn make_request<T>(&self, path: &str, body: Option<&RequestBody>) -> Result<T, APIError>
+  async fn make_request<T>(&self, path: &str, body: Option<&RequestBody>) -> Result<T, APIError>
   where
     T: DeserializeOwned,
   {
@@ -54,14 +54,17 @@ impl Client {
       Some(body) => self.client.post(request_url.as_str()).form(body),
       None => self.client.get(request_url.as_str()),
     };
-    let mut resp = match &self.token {
-      None => client.send()?,
-      Some(token) => client
-        .header("Authorization", format!("Bearer {}", token))
-        .send()?,
+    let resp = match &self.token {
+      None => client.send().await?,
+      Some(token) => {
+        client
+          .header("Authorization", format!("Bearer {}", token))
+          .send()
+          .await?
+      }
     };
     match resp.status() {
-      reqwest::StatusCode::OK => Ok(resp.json()?),
+      reqwest::StatusCode::OK => Ok(resp.json().await?),
       reqwest::StatusCode::UNAUTHORIZED => Err(APIError::AuthError),
       code => Err(APIError::Error {
         error: format!("Returned with non-200 code: {}", code),
