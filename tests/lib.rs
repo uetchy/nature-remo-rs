@@ -10,6 +10,9 @@ fn get_test_token() -> String {
 fn it_create_instance() {
   let token = get_test_token();
   let client = remo::cloud::Client::new(Some(token));
-  let user = client.get_user().unwrap();
-  assert!(user.nickname.len() > 0);
+
+  async {
+    let user = client.get_user().await.unwrap();
+    assert!(user.nickname.len() > 0);
+  };
 }

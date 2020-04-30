@@ -95,25 +95,27 @@ pub struct SignalMessage {
 }
 
 impl Client {
-  pub fn get_appliances(&self) -> Result<Vec<Appliance>, APIError> {
-    self.get::<Vec<Appliance>>("/1/appliances")
+  pub async fn get_appliances(&self) -> Result<Vec<Appliance>, APIError> {
+    self.get::<Vec<Appliance>>("/1/appliances").await
   }
 
-  pub fn find_aircon(&self) -> Result<Appliance, APIError> {
-    let appliances = self.get_appliances().unwrap();
+  pub async fn find_aircon(&self) -> Result<Appliance, APIError> {
+    let appliances = self.get_appliances().await?;
     let aircon = appliances.iter().find(|&app| app.r#type == "AC").unwrap();
     Ok(aircon.clone())
   }
 
-  pub fn update_aircon_settings(
+  pub async fn update_aircon_settings(
     &self,
     aircon_id: &str,
-    body: &RequestBody,
+    body: &RequestBody<'_>,
   ) -> Result<UpdateAirconSettingsResponse, APIError> {
-    self.post::<UpdateAirconSettingsResponse>(
-      &format!("/1/appliances/{}/aircon_settings", aircon_id),
-      body,
-    )
+    self
+      .post::<UpdateAirconSettingsResponse>(
+        &format!("/1/appliances/{}/aircon_settings", aircon_id),
+        body,
+      )
+      .await
   }
 }
 
@@ -127,9 +129,12 @@ mod tests {
   fn it_get_appliances() {
     let token = get_test_token();
     let client = Client::new(Some(token));
-    let res = client.get_appliances().unwrap();
-    println!("{:?}", res);
-    assert_eq!(res[0].device.name, "Living Room")
+
+    async {
+      let res = client.get_appliances().await.unwrap();
+      println!("{:?}", res);
+      assert_eq!(res[0].device.name, "Living Room")
+    };
   }
 
   #[test]
@@ -137,23 +142,31 @@ mod tests {
     let token = get_test_token();
     let client = Client::new(Some(token));
 
-    let appliances = client.get_appliances().unwrap();
-    let aircon = appliances.iter().find(|&app| app.r#type == "AC").unwrap();
+    async {
+      let appliances = client.get_appliances().await.unwrap();
+      let aircon = appliances.iter().find(|&app| app.r#type == "AC").unwrap();
 
-    {
-      let mut body = RequestBody::new();
-      body.insert("operation_mode", "warm");
-      let resp = client.update_aircon_settings(&aircon.id, &body).unwrap();
-      println!("{:?}", resp);
-      assert_eq!(resp.mode, "warm");
-    }
+      {
+        let mut body = RequestBody::new();
+        body.insert("operation_mode", "warm");
+        let resp = client
+          .update_aircon_settings(&aircon.id, &body)
+          .await
+          .unwrap();
+        println!("{:?}", resp);
+        assert_eq!(resp.mode, "warm");
+      }
 
-    {
-      let mut body = RequestBody::new();
-      body.insert("operation_mode", "cool");
-      let resp = client.update_aircon_settings(&aircon.id, &body).unwrap();
-      println!("{:?}", resp);
-      assert_eq!(resp.mode, "cool");
-    }
+      {
+        let mut body = RequestBody::new();
+        body.insert("operation_mode", "cool");
+        let resp = client
+          .update_aircon_settings(&aircon.id, &body)
+          .await
+          .unwrap();
+        println!("{:?}", resp);
+        assert_eq!(resp.mode, "cool");
+      }
+    };
   }
 }

@@ -46,23 +46,18 @@ pub struct EventValue {
 }
 
 impl Client {
-  pub fn get_devices(&self) -> Result<Vec<DeviceWithEvents>, APIError> {
-    self.get::<Vec<DeviceWithEvents>>("/1/devices")
+  pub async fn get_devices(&self) -> Result<Vec<DeviceWithEvents>, APIError> {
+    self.get::<Vec<DeviceWithEvents>>("/1/devices").await
   }
 
-  pub fn get_sensor_value(&self) -> Result<SensorValue, APIError> {
-    let sensor_value = match self.get_devices() {
-      Ok(devices) => {
-        let device = &devices[0];
-        SensorValue {
-          temperature: device.newest_events.te.val,
-          humidity: device.newest_events.hu.val,
-          illumination: device.newest_events.il.val,
-        }
-      }
-      Err(err) => return Err(err),
-    };
-    Ok(sensor_value)
+  pub async fn get_sensor_value(&self) -> Result<SensorValue, APIError> {
+    let devices = self.get_devices().await?;
+    let device = &devices[0];
+    Ok(SensorValue {
+      temperature: device.newest_events.te.val,
+      humidity: device.newest_events.hu.val,
+      illumination: device.newest_events.il.val,
+    })
   }
 }
 
@@ -75,9 +70,11 @@ mod tests {
   fn it_get_devices() {
     let token = get_test_token();
     let client = Client::new(Some(token));
-    let res = client.get_devices().unwrap();
-    println!("{:?}", res);
-    assert_eq!(res[0].firmware_version, "Remo/1.0.62-gabbf5bd")
+    async {
+      let res = client.get_devices().await.unwrap();
+      println!("{:?}", res);
+      assert_eq!(res[0].firmware_version, "Remo/1.0.62-gabbf5bd")
+    };
   }
 
   #[test]
@@ -85,10 +82,12 @@ mod tests {
     let token = get_test_token();
     let client = Client::new(Some(token));
 
-    let senval = client.get_sensor_value().unwrap();
-    println!("{:?}", senval);
-    assert!(senval.temperature > 0.0);
-    assert!(senval.humidity > 0.0);
-    assert!(senval.illumination > 0.0);
+    async {
+      let senval = client.get_sensor_value().await.unwrap();
+      println!("{:?}", senval);
+      assert!(senval.temperature > 0.0);
+      assert!(senval.humidity > 0.0);
+      assert!(senval.illumination > 0.0);
+    };
   }
 }

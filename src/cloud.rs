@@ -31,21 +31,21 @@ impl Client {
 }
 
 impl Client {
-  fn get<T>(&self, path: &str) -> Result<T, APIError>
+  async fn get<T>(&self, path: &str) -> Result<T, APIError>
   where
     T: DeserializeOwned,
   {
-    self.make_request::<T>(path, None)
+    self.make_request::<T>(path, None).await
   }
 
-  fn post<T>(&self, path: &str, body: &RequestBody) -> Result<T, APIError>
+  async fn post<T>(&self, path: &str, body: &RequestBody<'_>) -> Result<T, APIError>
   where
     T: DeserializeOwned,
   {
-    self.make_request::<T>(path, Some(body))
+    self.make_request::<T>(path, Some(body)).await
   }
 
-  async fn make_request<T>(&self, path: &str, body: Option<&RequestBody>) -> Result<T, APIError>
+  async fn make_request<T>(&self, path: &str, body: Option<&RequestBody<'_>>) -> Result<T, APIError>
   where
     T: DeserializeOwned,
   {
